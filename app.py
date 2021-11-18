@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, make_response
+from flask import Flask, jsonify, request, make_response, redirect
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import UniqueConstraint
 from functools import wraps
@@ -37,7 +37,7 @@ def token_required(f):
     def decorated(*args, **kwargs):
         token = None #to be replaced
 
-        if'x-access-token' in request.headers:
+        if 'x-access-token' in request.headers:
             token = request.headers['x-access-token']
         if not token:
             return jsonify({'message' : 'Token is missing'}), 401
@@ -66,7 +66,16 @@ def login():
     if check_password_hash(user.password, auth.password):
         token = jwt.encode({'id': user.id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes = 30)}, app.config['SECRET_KEY'], algorithm = "HS256")
 
-        return jsonify({'token': token.decode('UTF-8')})
+        #TO-DO: Returns a token; Make verifiable by @token_required
+        #return jsonify({'token': token})
+
+        #redirect to different page based on role_id
+        if user.role_id == 1:
+            return redirect(f'/admin')
+        if user.role_id == 2:
+            return redirect(f'/agent')
+        if user.role_id == 3:
+            return redirect(f'/guest')
 
     return make_response('Unable to verify user', 401, {'WWW-Authenticate': 'Basic realm="Login required"'})
 
@@ -81,13 +90,23 @@ def signup():
     db.session.commit()
     return jsonify({'message' : 'New user created'})
 
-@app.route('/test', methods = ['GET'])
-@token_required
-def test(current_user):
-    if not current_user.role_id == 1:
-        return jsonify({'message': 'Not an admin'})
+@app.route('/guest', methods = ['GET'])
+def guest():
 
-    return jsonify({'message': 'Admin'})
+    #API function for guests (passengers) redirects to go here
+    return jsonify({'message': 'Guest page'})
+
+@app.route('/agent', methods = ['GET'])
+def agent():
+
+    #API function for guests (agents) redirects to go here
+    return jsonify({'message': 'Agent page'})
+
+@app.route('/admin', methods = ['GET'])
+def admin():
+
+    #API function for guests (admins) redirects to go here
+    return jsonify({'message': 'Admin page'})
 
 if __name__ == '__main__':
     app.run(debug = True)
